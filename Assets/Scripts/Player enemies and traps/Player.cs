@@ -23,11 +23,13 @@ public class Player : MonoBehaviour
 
     [Header("Properties")]
     public bool Right;
+    public bool JumpRequest;
     public bool JumpButton;
     public bool Grounded;
     public bool CanDoubleJump;
     public bool CanMove;
     public bool Jumping;
+    public bool DoubleJumping;
     public bool Falling;
     public bool OnWall;
     public bool SlidingOnWall;
@@ -43,54 +45,60 @@ public class Player : MonoBehaviour
     private void Update()
     {
         HorizontalAxis = Input.GetAxis("Horizontal");
-        JumpButton = Input.GetButtonDown("Jump");
-
+        if (Input.GetButtonDown("Jump")) JumpRequest = true;
     }
 
     private void FixedUpdate()
     {
+        #region Movement and properties
         Grounded = Physics2D.OverlapCircle(GroundChecker.position, GroundCheckRadius, GroundLayer);
         OnWall = Physics2D.Raycast(WallChecker.position, transform.right, WallCheckDistance, WallLayer);
+
         if (Falling && Jumping && !WallJumping) Ani.SetInteger("State", 3);
         if (Grounded)
         {
             Jumping = false;
+            DoubleJumping = false;
             CanDoubleJump = false;
             WallJumping = false;
+            Falling = false;
         }
-
+        
         if (CanMove)
         {
             Rig.velocity = new Vector2(HorizontalAxis * Speed, Rig.velocity.y);
-            if (Rig.velocity.x != 0 && !Jumping)
-            {
 
-                Ani.SetInteger("State", 1);
-            }
+            #region Animation
+            if (Rig.velocity.x != 0 && !Jumping) Ani.SetInteger("State", 1);
             else if (Rig.velocity.x == 0 && !Jumping) Ani.SetInteger("State", 0);
+
             if (Rig.velocity.x > 0) FlipPlayer("Right");
             else if (Rig.velocity.x < 0) FlipPlayer("Left");
-            if (Rig.velocity.y < 0) Falling = true;
-            else if (Rig.velocity.y >= 0) Falling = false;
+
+            if (Rig.velocity.y < -0.01f) Falling = true;
+            else Falling = false;
+            #endregion
             #region Jump and Double Jump
 
-            if (JumpButton && Grounded)
+            if (JumpRequest && Grounded)
             {
                 Ani.SetInteger("State", 2);
                 Jumping = true;
                 Rig.AddForce(new Vector2(0, JumpForce), ForceMode2D.Impulse);
                 StartCoroutine(DoubleJump());
+                JumpRequest = false;
             }
-            else if (JumpButton && CanDoubleJump && !Grounded && Jumping)
+            else if (JumpRequest && CanDoubleJump && !Grounded && Jumping)
             {
                 Ani.SetTrigger("Double Jump");
                 Rig.velocity = new Vector2(Rig.velocity.x, 0);
                 Rig.AddForce(new Vector2(0, JumpForce), ForceMode2D.Impulse);
                 CanDoubleJump = false;
+                DoubleJumping = true;
+                JumpRequest = false;
             }
             #endregion
         }
-
         #region Wall Jump
         if (Falling && HorizontalAxis != 0 && OnWall && !Grounded)
         {
@@ -101,10 +109,10 @@ public class Player : MonoBehaviour
             if (HorizontalAxis > 0) FlipPlayer("Right");
             else if (HorizontalAxis < 0) FlipPlayer("Left");
             CanDoubleJump = false;
-            
+
         }
         else SlidingOnWall = false;
-        if (JumpButton && SlidingOnWall)
+        if (JumpRequest && SlidingOnWall)
         {
             Rig.velocity = Vector2.zero;
             if (Right)
@@ -120,10 +128,11 @@ public class Player : MonoBehaviour
             WallJumping = true;
             Ani.SetInteger("State", 2);
             StartCoroutine(RemoveMoveDelay(0.3f));
+            JumpRequest = false;
         }
         #endregion
 
-
+        #endregion
     }
     IEnumerator DoubleJump()
     {
