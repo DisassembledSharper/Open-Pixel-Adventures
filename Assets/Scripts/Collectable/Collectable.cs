@@ -18,7 +18,6 @@ public class Collectable : MonoBehaviour
             GameObject Cllt = Instantiate(CollectedPrefab, transform.position, CollectedPrefab.transform.rotation);
             Destroy(Cllt, 0.3f);
             Destroy(gameObject);
-            Debug.Log(Scm.Apples);
         }
     }
 }
